@@ -1,0 +1,20 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment
+.venv/
+
+# Large binaries, models, datasets & logs
+checkpoints/
+data/
+logs/
+archive*/
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# OS generated files
+.DS_Store

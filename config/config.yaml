@@ -1,0 +1,175 @@
+# ============================================================================
+# Multimodal Medical Report Generation — Configuration
+# ============================================================================
+
+# --- Data ---
+data:
+  dataset_name: "iu_xray"
+  data_dir: "data/iu_xray"
+  image_dir: "data/iu_xray/images"
+  report_dir: "data/iu_xray/reports"
+  image_size: 224
+  max_report_length: 128
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  num_workers: 0
+  report_section: "findings"  # "findings", "impression", or "both"
+
+  # 14 CheXpert-aligned findings
+  finding_labels:
+    - "No Finding"
+    - "Enlarged Cardiomediastinum"
+    - "Cardiomegaly"
+    - "Lung Opacity"
+    - "Lung Lesion"
+    - "Edema"
+    - "Consolidation"
+    - "Pneumonia"
+    - "Atelectasis"
+    - "Pneumothorax"
+    - "Pleural Effusion"
+    - "Pleural Other"
+    - "Fracture"
+    - "Support Devices"
+
+  # Keywords for cross-attention weak supervision (per finding)
+  finding_keywords:
+    "No Finding": ["normal", "unremarkable", "no acute", "clear", "no active disease"]
+    "Enlarged Cardiomediastinum": ["cardiomediastinum", "mediastinum", "mediastinal"]
+    "Cardiomegaly": ["cardiomegaly", "enlarged heart", "cardiac silhouette", "heart size"]
+    "Lung Opacity": ["opacity", "opacification", "opacities", "haziness"]
+    "Lung Lesion": ["lesion", "mass", "nodule", "nodular"]
+    "Edema": ["edema", "pulmonary edema", "vascular congestion", "cephalization"]
+    "Consolidation": ["consolidation", "consolidative", "airspace disease"]
+    "Pneumonia": ["pneumonia", "infection", "infiltrate"]
+    "Atelectasis": ["atelectasis", "atelectatic", "volume loss"]
+    "Pneumothorax": ["pneumothorax"]
+    "Pleural Effusion": ["pleural effusion", "effusion", "blunting", "costophrenic"]
+    "Pleural Other": ["pleural", "thickening", "calcification"]
+    "Fracture": ["fracture", "fractured"]
+    "Support Devices": ["line", "tube", "catheter", "pacemaker", "device", "hardware"]
+
+  # Finding text templates for NLI scorer
+  finding_templates:
+    positive:
+      "No Finding": "The chest radiograph is normal with no acute findings."
+      "Enlarged Cardiomediastinum": "The cardiomediastinum is enlarged."
+      "Cardiomegaly": "The cardiac silhouette is enlarged consistent with cardiomegaly."
+      "Lung Opacity": "There is opacity in the lungs."
+      "Lung Lesion": "There is a lung lesion or nodule."
+      "Edema": "There is pulmonary edema with vascular congestion."
+      "Consolidation": "There is consolidation in the lungs."
+      "Pneumonia": "There is evidence of pneumonia."
+      "Atelectasis": "There is atelectasis."
+      "Pneumothorax": "There is pneumothorax."
+      "Pleural Effusion": "There is pleural effusion."
+      "Pleural Other": "There is pleural abnormality."
+      "Fracture": "There is a fracture."
+      "Support Devices": "There are support devices present."
+    negative:
+      "No Finding": "The chest radiograph shows abnormal findings."
+      "Enlarged Cardiomediastinum": "The cardiomediastinum is normal in size."
+      "Cardiomegaly": "The cardiac silhouette is normal in size."
+      "Lung Opacity": "The lungs are clear without opacity."
+      "Lung Lesion": "No lung lesion or nodule is identified."
+      "Edema": "There is no pulmonary edema."
+      "Consolidation": "There is no consolidation."
+      "Pneumonia": "There is no evidence of pneumonia."
+      "Atelectasis": "There is no atelectasis."
+      "Pneumothorax": "There is no pneumothorax."
+      "Pleural Effusion": "There is no pleural effusion."
+      "Pleural Other": "No pleural abnormality is seen."
+      "Fracture": "No fracture is identified."
+      "Support Devices": "No support devices are present."
+
+# --- Vision Encoder ---
+vision_encoder:
+  backbone: "densenet121"
+  pretrained: true
+  feature_dim: 1024
+  output_grid_size: 7
+  dual_view_mode: "concat"  # "concat" or "avg"
+  projected_dim: 1024       # after concat projection (2048 → 1024)
+  freeze_blocks: ["features"]  # freeze entire backbone for low-resource environments
+
+# --- Metadata MLP ---
+metadata_mlp:
+  input_dim: 14
+  hidden_dim: 128
+  output_dim: 256
+  dropout: 0.3
+  label_smoothing: 0.0  # set to 0.1 for noisy labels
+
+# --- FiLM Fusion ---
+film_fusion:
+  conditioning_dim: 256     # from metadata MLP output
+  feature_channels: 1024    # from vision encoder output
+  use_residual: true
+  identity_init: true       # γ→1, β→0 at init
+
+# --- Cross-Attention Bridge ---
+cross_attention_bridge:
+  num_findings: 14
+  query_dim: 256
+  num_heads: 8
+  dropout: 0.1
+  omission_threshold: 0.1   # max attention < this → flag as omitted
+  alignment_loss_weight: 0.1 # α in L_total
+
+# --- Decoder (GPT-2) ---
+decoder:
+  model_name: "gpt2"
+  embed_dim: 768
+  num_layers: 12
+  num_heads: 12
+  max_gen_length: 128
+  freeze_epochs: 3           # freeze GPT-2 body for first N epochs
+  discriminative_lr_factor: 0.1  # pretrained params get base_lr * this
+
+# --- NLI Scorer ---
+nli_scorer:
+  model_name: "bert-base-uncased"
+  hidden_dim: 256
+  num_classes: 3             # entailment, contradiction, neutral
+  dropout: 0.1
+  frozen_during_gen_training: true
+  pretrain_epochs: 3
+  pretrain_lr: 2.0e-5
+  pretrain_batch_size: 8
+
+# --- Training ---
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 16  # effective batch = 32
+  learning_rate: 5.0e-5
+  weight_decay: 0.01
+  max_epochs: 30
+  warmup_epochs: 5           # pure generation loss (λ=0)
+  lambda_max: 0.5            # max consistency loss weight
+  lambda_ramp_start: 5       # epoch to start ramping λ
+  lambda_ramp_end: 15        # epoch to reach λ_max
+  mixed_precision: false
+  max_grad_norm: 1.0
+  early_stopping_patience: 5
+  early_stopping_metric: "fcs"  # factual consistency score
+  checkpoint_dir: "checkpoints"
+  log_dir: "logs"
+  seed: 42
+
+  # --- Validation optimizations (highly recommended for CPU-only / battery saving) ---
+  val_subset_size: null           # validate on a subset of N samples (set to null for full validation set)
+  val_metrics_every_n_epochs: 3  # compute heavy generation & NLI metrics every N epochs
+
+# --- Beam Search ---
+beam_search:
+  beam_width: 3
+  length_penalty: 0.7
+  max_length: 128
+  top_k: 1                   # return top-k candidates
+
+# --- Evaluation ---
+evaluation:
+  metrics: ["bleu", "meteor", "rouge_l", "cider"]
+  num_samples_to_visualize: 10
+  output_dir: "results"
