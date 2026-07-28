@@ -42,6 +42,7 @@ class ConsistencyWeightedLoss(nn.Module):
         self.alpha = config.cross_attention_bridge.get("alignment_loss_weight", 0.1)
         self.finding_labels = config.data.finding_labels
         self.finding_templates = config.data.finding_templates
+        self.finding_keywords = config.data.get("finding_keywords", None)
         
         logger.info(
             f"ConsistencyWeightedLoss initialized with alignment loss weight α={self.alpha}"
@@ -104,6 +105,7 @@ class ConsistencyWeightedLoss(nn.Module):
                 finding_label_names=self.finding_labels,
                 finding_templates=self.finding_templates,
                 device=device,
+                finding_keywords=self.finding_keywords,
             )
             
             # Mean contradiction rate across the batch

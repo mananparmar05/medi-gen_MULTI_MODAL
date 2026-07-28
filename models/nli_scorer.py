@@ -468,6 +468,7 @@ class FactualConsistencyScorer(nn.Module):
         finding_templates: Dict[str, Dict[str, str]],
         device: torch.device,
         batch_size: int = 64,
+        finding_keywords: Optional[Dict[str, List[str]]] = None,
     ) -> torch.Tensor:
         """
         Compute batch contradiction scores for training signal.
@@ -498,9 +499,19 @@ class FactualConsistencyScorer(nn.Module):
                 if not premise:
                     continue
                 
+                keywords = finding_keywords.get(f_name, []) if finding_keywords else []
+                
                 for sentence in sentences:
                     if len(sentence.strip()) < 5:
                         continue
+                    
+                    # Fast heuristic: if finding is negative (label <= 0.5) and sentence does NOT
+                    # contain any keywords for this finding, relationship is neutral (no contradiction).
+                    # Skip BERT call for massive CPU speedup.
+                    if label_val <= 0.5 and keywords:
+                        sent_lower = sentence.lower()
+                        if not any(kw in sent_lower for kw in keywords):
+                            continue
                     
                     pairs.append((premise, sentence, b))
                     report_pair_counts[b] += 1
