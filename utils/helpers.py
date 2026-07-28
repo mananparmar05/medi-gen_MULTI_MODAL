@@ -178,6 +178,13 @@ def setup_logging(
         logger.addHandler(fh)
         logging.info(f"Logging to {log_path / f'{experiment_name}.log'}")
     
+    # Suppress verbose Hugging Face tokenizer warnings
+    try:
+        import transformers
+        transformers.logging.set_verbosity_error()
+    except ImportError:
+        pass
+
     return logger
 
 
