@@ -144,7 +144,7 @@ training:
   gradient_accumulation_steps: 16  # effective batch = 32
   learning_rate: 5.0e-5
   weight_decay: 0.01
-  max_epochs: 30
+  max_epochs: 20
   warmup_epochs: 5           # pure generation loss (λ=0)
   lambda_max: 0.5            # max consistency loss weight
   lambda_ramp_start: 5       # epoch to start ramping λ
