@@ -372,15 +372,25 @@ class MedicalReportDecoder(nn.Module):
         visual_features: torch.Tensor,
         tokenizer,
         max_length: Optional[int] = None,
+        repetition_penalty: float = 1.3,
+        no_repeat_ngram_size: int = 3,
+        min_length: int = 10,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Simple greedy decoding for inference.
-        
+        Greedy decoding with repetition penalty, n-gram blocking, and minimum
+        length enforcement for high-quality radiology report generation.
+
         Args:
             visual_features: [B, C, H, W] visual context.
             tokenizer: ReportTokenizer instance.
             max_length: Maximum generation length.
-            
+            repetition_penalty: Logit penalty factor for previously seen tokens
+                (>1.0 suppresses repeats). Default 1.3.
+            no_repeat_ngram_size: Block any n-gram from appearing twice.
+                Default 3 (block repeated trigrams).
+            min_length: Suppress EOS for this many steps to prevent empty
+                outputs. Default 10.
+
         Returns:
             (generated_ids, hidden_states_all)
             generated_ids: [B, gen_len] generated token IDs.
@@ -388,38 +398,75 @@ class MedicalReportDecoder(nn.Module):
         """
         if max_length is None:
             max_length = self.max_length
-        
+
         B = visual_features.size(0)
         device = visual_features.device
-        
+
         # Start with BOS token
         input_ids = torch.full(
             (B, 1), tokenizer.bos_token_id, dtype=torch.long, device=device
         )
-        
+
         all_hidden_states = []
-        
+
         for step in range(max_length - 1):
             outputs = self.forward(
                 visual_features=visual_features,
                 input_ids=input_ids,
             )
-            
-            # Get next token (greedy)
-            next_logits = outputs["logits"][:, -1, :]  # [B, vocab_size]
+
+            # Get next token logits
+            next_logits = outputs["logits"][:, -1, :].clone()  # [B, vocab_size]
+
+            # --- Fix 1: Repetition Penalty ---
+            # For each token already in the sequence, divide its logit by the
+            # penalty factor (for positive logits) or multiply (for negative),
+            # making previously seen tokens less likely to be chosen again.
+            if repetition_penalty != 1.0 and input_ids.shape[1] > 1:
+                for b in range(B):
+                    generated_tokens = input_ids[b].unique()
+                    for token_id in generated_tokens:
+                        tid = token_id.item()
+                        if next_logits[b, tid] > 0:
+                            next_logits[b, tid] /= repetition_penalty
+                        else:
+                            next_logits[b, tid] *= repetition_penalty
+
+            # --- Fix 2: No-Repeat N-gram Blocking ---
+            # Check the last (no_repeat_ngram_size - 1) tokens against all
+            # previously seen n-gram prefixes. Ban any completion token that
+            # would re-create a trigram already present in the output.
+            if no_repeat_ngram_size > 1 and input_ids.shape[1] >= no_repeat_ngram_size:
+                for b in range(B):
+                    seq = input_ids[b].tolist()
+                    ngram_prefix = tuple(seq[-(no_repeat_ngram_size - 1):])
+                    banned: set = set()
+                    for i in range(len(seq) - no_repeat_ngram_size + 1):
+                        if tuple(seq[i:i + no_repeat_ngram_size - 1]) == ngram_prefix:
+                            banned.add(seq[i + no_repeat_ngram_size - 1])
+                    for token_id in banned:
+                        next_logits[b, token_id] = -float("inf")
+
+            # --- Fix 3: Minimum Length Enforcement ---
+            # Suppress EOS token for the first `min_length` steps so the model
+            # cannot produce an empty or near-empty output.
+            if step < min_length:
+                next_logits[:, tokenizer.eos_token_id] = -float("inf")
+
+            # Greedy selection
             next_token = next_logits.argmax(dim=-1, keepdim=True)  # [B, 1]
-            
+
             # Collect hidden state for this position
             all_hidden_states.append(outputs["hidden_states"][:, -1:, :])
-            
+
             # Append to sequence
             input_ids = torch.cat([input_ids, next_token], dim=1)
-            
+
             # Stop if all sequences have generated EOS
             if (next_token.squeeze(-1) == tokenizer.eos_token_id).all():
                 break
-        
+
         # Stack hidden states
         hidden_states_all = torch.cat(all_hidden_states, dim=1)
-        
+
         return input_ids, hidden_states_all
