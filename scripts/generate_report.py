@@ -2,13 +2,19 @@
 Single Image Report Generation & Inference Script.
 
 Usage:
+    # Greedy decoding (fast)
     python scripts/generate_report.py --sample-idx 0
-    python scripts/generate_report.py --image path/to/frontal.png
+
+    # Beam search (better quality, slower)
+    python scripts/generate_report.py --sample-idx 0 --beam-width 4
+
+    # Custom image
+    python scripts/generate_report.py --image path/to/frontal.png --beam-width 4
 
 Orchestrates:
     1. Loads trained model checkpoint (best.pt).
     2. Takes an input X-ray image + finding labels.
-    3. Runs model.generate() to produce a medical radiology report.
+    3. Runs model.generate() — greedy or beam search.
     4. Evaluates factual consistency score on the generated report.
 """
 
@@ -24,6 +30,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.helpers import load_config, setup_logging, get_device, set_seed
+from utils.beam_search import BeamSearchDecoder
 from data.tokenizer import ReportTokenizer
 from data.dataset import create_dataloaders
 from data.augmentation import get_eval_transforms
@@ -49,6 +56,10 @@ def main():
     parser.add_argument(
         "--image", type=str, default=None,
         help="Optional path to a custom frontal chest X-ray image"
+    )
+    parser.add_argument(
+        "--beam-width", type=int, default=1,
+        help="Beam search width (1 = greedy, 4 = recommended for quality)"
     )
     args = parser.parse_args()
 
@@ -103,7 +114,21 @@ def main():
         labels = sample["labels"].unsqueeze(0).to(device)
         gt_report = sample["report_text"]
 
-    # 4. Run Generation
+    # 4. Run Generation (greedy or beam search)
+    beam_searcher = None
+    if args.beam_width > 1:
+        beam_searcher = BeamSearchDecoder(
+            num_beams=args.beam_width,
+            length_penalty=0.6,
+            repetition_penalty=1.3,
+            no_repeat_ngram_size=3,
+            min_length=10,
+            max_length=config.decoder.max_gen_length,
+        )
+        logger.info(f"Using beam search with width={args.beam_width}")
+    else:
+        logger.info("Using greedy decoding (pass --beam-width 4 for beam search)")
+
     with torch.no_grad():
         gen_outputs = model.generate(
             frontal_img=frontal_img,
@@ -112,6 +137,7 @@ def main():
             labels=labels,
             tokenizer=tokenizer,
             max_length=config.decoder.max_gen_length,
+            beam_searcher=beam_searcher,
         )
 
         generated_text = gen_outputs["generated_texts"][0]
