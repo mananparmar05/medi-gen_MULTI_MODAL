@@ -58,8 +58,8 @@ The system is trained using a **curriculum-weighted loss** that progressively in
 │  │   (Shared Weights, Dual-View)   │   │  14 → 128 → 256   │        │
 │  │   Output: [B, 1024, 7, 7]       │   │  (Finding Labels) │        │
 │  └──────────────┬──────────────────┘   └────────┬──────────┘        │
-│                 │                                │                  │
-│                 ▼                                ▼                  │
+│                 │                               │                   │
+│                 ▼                               ▼                   │
 │  ┌─────────────────────────────────────────────────────────┐        │
 │  │              FiLM Fusion Layer                          │        │
 │  │     γ, β = f(metadata) → modulate visual features       │        │
