@@ -294,9 +294,32 @@ class MultimodalReportGenerator(nn.Module):
         
         # Step 4: Generate text
         if beam_searcher is not None:
-            generated_ids, hidden_states = beam_searcher.search(
-                self.decoder, fused_features, tokenizer, max_length
-            )
+            # Beam search only supports B=1 per call.
+            # Loop over each sample in the batch individually, then pad & stack.
+            B = fused_features.size(0)
+            all_ids = []
+            all_hidden = []
+            for b in range(B):
+                sample_features = fused_features[b:b+1]   # [1, C, H, W]
+                ids_b, hidden_b = beam_searcher.search(
+                    self.decoder, sample_features, tokenizer, max_length
+                )
+                all_ids.append(ids_b[0])       # [gen_len_b]
+                all_hidden.append(hidden_b[0]) # [gen_len_b, 768]
+
+            # Pad sequences to the same length for batched bridge
+            max_len = max(t.size(0) for t in all_ids)
+            pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
+            device = fused_features.device
+            generated_ids = torch.stack([
+                torch.cat([t, torch.full((max_len - t.size(0),), pad_id,
+                                         dtype=torch.long, device=device)])
+                for t in all_ids
+            ])  # [B, max_len]
+            hidden_states = torch.stack([
+                torch.cat([h, torch.zeros(max_len - h.size(0), h.size(1), device=device)])
+                for h in all_hidden
+            ])  # [B, max_len, 768]
         else:
             generated_ids, hidden_states = self.decoder.generate_greedy(
                 fused_features, tokenizer, max_length
