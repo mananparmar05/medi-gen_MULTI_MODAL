@@ -348,7 +348,7 @@ Beam Search  : The heart and lungs have XXXX in the interval. Both lung volumes
 ## Engineering Optimizations
 
 ### Challenge: CPU-Only Training of 333M Parameter Model
-Training was conducted entirely on CPU (Apple M-series, no dedicated GPU), requiring several engineering optimizations to make the pipeline feasible:
+Training was conducted entirely on CPU (Apple i5, no dedicated GPU), requiring several engineering optimizations to make the pipeline feasible:
 
 #### 1. Keyword-Guided NLI Pre-Filtering
 - **Problem**: Online NLI contradiction scoring generated ~140 BERT forward passes per training batch (14 findings × ~10 sentences), causing 68s/iter latency.
