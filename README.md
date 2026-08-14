@@ -308,7 +308,7 @@ Given a chest X-ray image, the trained model produces:
 | **ROUGE-L** | **0.2230** | ≥ 0.25 | 🟡 Near target |
 | **Val Loss** | **1.0681** | — | 📉 Best at Epoch 20 |
 
-> All results achieved on **CPU-only training** (Apple M-series), no GPU.
+> All results achieved on **CPU-only training** (Apple i5), no GPU.
 
 ### Greedy vs. Beam Search — Single Sample Comparison
 
