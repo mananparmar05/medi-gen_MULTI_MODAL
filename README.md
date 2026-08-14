@@ -48,51 +48,51 @@ The system is trained using a **curriculum-weighted loss** that progressively in
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    MULTIMODAL REPORT GENERATOR                      │
 │                                                                     │
-│  ┌──────────────┐   ┌──────────────┐                               │
-│  │ Frontal X-Ray│   │ Lateral X-Ray│                               │
-│  └──────┬───────┘   └──────┬───────┘                               │
+│  ┌──────────────┐   ┌──────────────┐                                │
+│  │ Frontal X-Ray│   │ Lateral X-Ray│                                │
+│  └──────┬───────┘   └──────┬───────┘                                │
 │         │                  │                                        │
 │         ▼                  ▼                                        │
-│  ┌─────────────────────────────────┐   ┌───────────────────┐       │
-│  │   DenseNet-121 Vision Encoder   │   │  Metadata MLP     │       │
-│  │   (Shared Weights, Dual-View)   │   │  14 → 128 → 256   │       │
-│  │   Output: [B, 1024, 7, 7]      │   │  (Finding Labels)  │       │
-│  └──────────────┬──────────────────┘   └────────┬──────────┘       │
+│  ┌─────────────────────────────────┐   ┌───────────────────┐        │
+│  │   DenseNet-121 Vision Encoder   │   │  Metadata MLP     │        │
+│  │   (Shared Weights, Dual-View)   │   │  14 → 128 → 256   │        │
+│  │   Output: [B, 1024, 7, 7]       │   │  (Finding Labels) │        │
+│  └──────────────┬──────────────────┘   └────────┬──────────┘        │
 │                 │                                │                  │
 │                 ▼                                ▼                  │
-│  ┌─────────────────────────────────────────────────────────┐       │
-│  │              FiLM Fusion Layer                          │       │
-│  │     γ, β = f(metadata) → modulate visual features       │       │
-│  │     out = γ ⊙ features + β  (+ residual)               │       │
-│  └──────────────────────┬──────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │              FiLM Fusion Layer                          │        │
+│  │     γ, β = f(metadata) → modulate visual features       │        │
+│  │     out = γ ⊙ features + β  (+ residual)                │        │
+│  └──────────────────────┬──────────────────────────────────┘        │
 │                         │                                           │
 │                         ▼                                           │
-│  ┌─────────────────────────────────────────────────────────┐       │
-│  │         Cross-Attention Bridge (Novel #1)               │       │
-│  │    14 learnable finding queries attend to visual grid    │       │
-│  │    Produces finding-aware context vectors               │       │
-│  │    + Weak supervision alignment loss (L_align)          │       │
-│  └──────────────────────┬──────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │         Cross-Attention Bridge (Novel #1)               │        │
+│  │    14 learnable finding queries attend to visual grid   │        │
+│  │    Produces finding-aware context vectors               │        │
+│  │    + Weak supervision alignment loss (L_align)          │        │
+│  └──────────────────────┬──────────────────────────────────┘        │
 │                         │                                           │
 │                         ▼                                           │
-│  ┌─────────────────────────────────────────────────────────┐       │
-│  │         GPT-2 Decoder (124M params)                     │       │
-│  │    12 Transformer layers + injected cross-attention      │       │
-│  │    Autoregressive text generation                       │       │
-│  └──────────────────────┬──────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │         GPT-2 Decoder (124M params)                     │        │
+│  │    12 Transformer layers + injected cross-attention     │        │
+│  │    Autoregressive text generation                       │        │
+│  └──────────────────────┬──────────────────────────────────┘        │
 │                         │                                           │
 │                         ▼                                           │
 │                  Generated Report                                   │
 │                         │                                           │
 │                         ▼                                           │
-│  ┌─────────────────────────────────────────────────────────┐       │
-│  │     Factual Consistency Scorer (Novel #2)               │       │
-│  │    BERT-base NLI classifier (frozen during training)     │       │
-│  │    Scores: entailment / contradiction / neutral          │       │
-│  │    Feeds L_consist back into training loss               │       │
-│  └─────────────────────────────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │     Factual Consistency Scorer (Novel #2)               │        │
+│  │    BERT-base NLI classifier (frozen during training)    │        │
+│  │    Scores: entailment / contradiction / neutral         │        │
+│  │    Feeds L_consist back into training loss              │        │
+│  └─────────────────────────────────────────────────────────┘        │
 │                                                                     │
-│  Total Loss: L = L_gen + λ(t)·L_consist + α·L_align               │
+│  Total Loss: L = L_gen + λ(t)·L_consist + α·L_align                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
