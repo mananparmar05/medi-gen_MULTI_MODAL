@@ -7,9 +7,8 @@ A deep learning system that automatically generates radiology reports from chest
   <img src="https://img.shields.io/badge/PyTorch-2.0+-red" alt="PyTorch">
   <img src="https://img.shields.io/badge/HuggingFace-Transformers-yellow" alt="HuggingFace">
   <img src="https://img.shields.io/badge/Dataset-IU%20X--Ray-green" alt="Dataset">
-  <img src="https://img.shields.io/badge/Parameters-333M-purple" alt="Parameters">
-  <img src="https://img.shields.io/badge/Training-20%20Epochs%20Complete-brightgreen" alt="Training">
-  <img src="https://img.shields.io/badge/BLEU--4-0.1122-blue" alt="BLEU-4">
+  <img src="https://img.shields.io/badge/BLEU--4-0.1246%20%E2%9C%85-brightgreen" alt="BLEU-4">
+  <img src="https://img.shields.io/badge/ROUGE--L-0.2807%20%E2%9C%85-brightgreen" alt="ROUGE-L">
 </p>
 
 ---
@@ -299,16 +298,16 @@ Given a chest X-ray image, the trained model produces:
 
 ### Official Test Set Evaluation (20 Epochs — IU X-Ray Test Set, 551 samples)
 
-| Metric | Greedy Decoding | Benchmark (R2Gen) | Status |
-|--------|----------------|-------------------|--------|
-| **BLEU-1** | **0.3000** | ~0.35 | 🟡 Close |
-| **BLEU-2** | **0.2018** | ~0.22 | 🟡 Close |
-| **BLEU-3** | **0.1497** | ~0.14 | ✅ Matched |
-| **BLEU-4** | **0.1122** | ≥ 0.10 | ✅ Exceeded |
-| **ROUGE-L** | **0.2230** | ≥ 0.25 | 🟡 Near target |
-| **Val Loss** | **1.0681** | — | 📉 Best at Epoch 20 |
+| Metric | Greedy (Width=1) | **Beam Search (Width=4)** | Research Target | Status |
+|--------|-----------------|--------------------------|-----------------|--------|
+| **BLEU-1** | `0.3000` | **`0.3624`** | ~0.3500 | 📈 Exceptional |
+| **BLEU-2** | `0.2018` | **`0.2330`** | ~0.2200 | 📈 Exceptional |
+| **BLEU-3** | `0.1497` | **`0.1679`** | ~0.1400 | ✅ **Exceeded** |
+| **BLEU-4** | `0.1122` | **`0.1246`** | **≥ 0.1000** | ✅ **EXCEEDED (+24.6%)** |
+| **ROUGE-L** | `0.2230` | **`0.2807`** | **≥ 0.2500** | ✅ **EXCEEDED (+12.3%)** |
+| **FCS** | `0.3322` | **`0.3644`** | — | 🟢 Higher Factual Entailment |
 
-> All results achieved on **CPU-only training** (Apple i5), no GPU.
+> All results achieved on **CPU-only training** (Apple M-series), no GPU required.
 
 ### Greedy vs. Beam Search — Single Sample Comparison
 
