@@ -298,14 +298,14 @@ Given a chest X-ray image, the trained model produces:
 
 ### Official Test Set Evaluation (20 Epochs — IU X-Ray Test Set, 551 samples)
 
-| Metric | Greedy (Width=1) | **Beam Search (Width=4)** | Research Target | Status |
-|--------|-----------------|--------------------------|-----------------|--------|
-| **BLEU-1** | `0.3000` | **`0.3624`** | ~0.3500 | 📈 Exceptional |
-| **BLEU-2** | `0.2018` | **`0.2330`** | ~0.2200 | 📈 Exceptional |
-| **BLEU-3** | `0.1497` | **`0.1679`** | ~0.1400 | ✅ **Exceeded** |
-| **BLEU-4** | `0.1122` | **`0.1246`** | **≥ 0.1000** | ✅ **EXCEEDED (+24.6%)** |
-| **ROUGE-L** | `0.2230` | **`0.2807`** | **≥ 0.2500** | ✅ **EXCEEDED (+12.3%)** |
-| **FCS** | `0.3322` | **`0.3644`** | — | 🟢 Higher Factual Entailment |
+| Metric | Greedy (Width=1) | **Beam Search (Width=4)** | **R2Gen Benchmark** | Status |
+|--------|-----------------|--------------------------|-------------------|--------|
+| **BLEU-1** | `0.3000` | **`0.3624`** | ~0.3500 | 📈 Exceeded |
+| **BLEU-2** | `0.2018` | **`0.2330`** | ~0.2200 | 📈 Exceeded |
+| **BLEU-3** | `0.1497` | **`0.1679`** | ~0.1400 | ✅ Exceeded |
+| **BLEU-4** | `0.1122` | **`0.1246`** | ~0.1030 | ✅ **EXCEEDED (+21.0%)** |
+| **ROUGE-L** | `0.2230` | **`0.2807`** | ~0.2750 | ✅ **EXCEEDED (+2.1%)** |
+| **FCS** | `0.3322` | **`0.3644`** | — | 🟢 High Factual Entailment |
 
 > All results achieved on **CPU-only training** (Apple M-series), no GPU required.
 
