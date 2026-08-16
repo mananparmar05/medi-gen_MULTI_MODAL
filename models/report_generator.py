@@ -308,18 +308,21 @@ class MultimodalReportGenerator(nn.Module):
                 all_hidden.append(hidden_b[0]) # [gen_len_b, 768]
 
             # Pad sequences to the same length for batched bridge
-            max_len = max(t.size(0) for t in all_ids)
+            # NOTE: all_ids includes BOS (len=steps+1); all_hidden has len=steps.
+            #       Compute max lengths independently to avoid negative padding.
+            max_ids_len = max(t.size(0) for t in all_ids)
+            max_hidden_len = max(h.size(0) for h in all_hidden)
             pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
             device = fused_features.device
             generated_ids = torch.stack([
-                torch.cat([t, torch.full((max_len - t.size(0),), pad_id,
+                torch.cat([t, torch.full((max_ids_len - t.size(0),), pad_id,
                                          dtype=torch.long, device=device)])
                 for t in all_ids
-            ])  # [B, max_len]
+            ])  # [B, max_ids_len]
             hidden_states = torch.stack([
-                torch.cat([h, torch.zeros(max_len - h.size(0), h.size(1), device=device)])
+                torch.cat([h, torch.zeros(max_hidden_len - h.size(0), h.size(1), device=device)])
                 for h in all_hidden
-            ])  # [B, max_len, 768]
+            ])  # [B, max_hidden_len, 768]
         else:
             generated_ids, hidden_states = self.decoder.generate_greedy(
                 fused_features, tokenizer, max_length

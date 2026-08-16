@@ -129,7 +129,8 @@ class BeamSearchDecoder:
         beams: List[Tuple[List[int], float, bool, List[torch.Tensor]]] = [
             ([bos_id], 0.0, False, [])
         ]
-        completed_beams: List[Tuple[List[int], float]] = []
+        # completed_beams stores (token_ids, normalised_score, hidden_states list)
+        completed_beams: List[Tuple[List[int], float, List[torch.Tensor]]] = []
 
         for step in range(max_length - 1):
             # Collect all next-step candidates across all active beams
@@ -188,8 +189,9 @@ class BeamSearchDecoder:
             beams = []
             for candidate in all_candidates:
                 ids, score, done, hidden_list = candidate
+                norm_score = normalised_score(candidate)
                 if done:
-                    completed_beams.append((ids, normalised_score(candidate)))
+                    completed_beams.append((ids, norm_score, hidden_list))
                     if len(completed_beams) >= self.num_beams:
                         break
                 elif len(beams) < self.num_beams:
@@ -205,9 +207,7 @@ class BeamSearchDecoder:
 
         # --- Pick best completed beam, or fall back to best active beam ---
         if completed_beams:
-            best_ids, _ = max(completed_beams, key=lambda x: x[1])
-            # Recover hidden states from best active beam (closest match by prefix)
-            best_hidden_list = beams[0][3] if beams else []
+            best_ids, _, best_hidden_list = max(completed_beams, key=lambda x: x[1])
         else:
             # No beam completed with EOS — take the highest-scoring active beam
             best_beam = max(beams, key=lambda b: normalised_score(b))
